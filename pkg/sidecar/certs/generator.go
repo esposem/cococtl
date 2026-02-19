@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 )
@@ -240,6 +241,68 @@ func (cs *CertificateSet) SaveToFile(dir, baseName string) error {
 		return fmt.Errorf("failed to write private key to %s: %w", keyPath, err)
 	}
 
+	return nil
+}
+
+// SaveToPKCS12 exports the certificate set to a PKCS#12 (.p12) file.
+// outputPath is the path for the resulting .p12 file; friendlyName is the alias
+// used inside the bundle (e.g. "coco mTLS client"); passphrase is the export
+// password (use "" for no password). The output file is created with 0600 permissions.
+func (cs *CertificateSet) SaveToPKCS12(outputPath, friendlyName, passphrase string) error {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0750); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	certTmp, err := os.CreateTemp("", "cert-*.pem")
+	if err != nil {
+		return fmt.Errorf("failed to create temp cert file: %w", err)
+	}
+	certTmpPath := certTmp.Name()
+	defer os.Remove(certTmpPath)
+	if _, err := certTmp.Write(cs.CertPEM); err != nil {
+		certTmp.Close()
+		return fmt.Errorf("failed to write cert to temp file: %w", err)
+	}
+	if err := certTmp.Chmod(0600); err != nil {
+		certTmp.Close()
+		return fmt.Errorf("failed to restrict temp cert permissions: %w", err)
+	}
+	if err := certTmp.Close(); err != nil {
+		return fmt.Errorf("failed to close temp cert file: %w", err)
+	}
+
+	keyTmp, err := os.CreateTemp("", "key-*.pem")
+	if err != nil {
+		return fmt.Errorf("failed to create temp key file: %w", err)
+	}
+	keyTmpPath := keyTmp.Name()
+	defer os.Remove(keyTmpPath)
+	if _, err := keyTmp.Write(cs.KeyPEM); err != nil {
+		keyTmp.Close()
+		return fmt.Errorf("failed to write key to temp file: %w", err)
+	}
+	if err := keyTmp.Chmod(0600); err != nil {
+		keyTmp.Close()
+		return fmt.Errorf("failed to restrict temp key permissions: %w", err)
+	}
+	if err := keyTmp.Close(); err != nil {
+		return fmt.Errorf("failed to close temp key file: %w", err)
+	}
+
+	passout := "pass:" + passphrase
+	cmd := exec.Command("openssl", "pkcs12", "-export",
+		"-inkey", keyTmpPath,
+		"-in", certTmpPath,
+		"-out", outputPath,
+		"-name", friendlyName,
+		"-passout", passout,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("openssl pkcs12 -export failed: %w (output: %s)", err, string(out))
+	}
+	if err := os.Chmod(outputPath, 0600); err != nil {
+		return fmt.Errorf("failed to restrict permissions on PKCS#12 file: %w", err)
+	}
 	return nil
 }
 

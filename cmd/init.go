@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/confidential-devhub/cococtl/pkg/cluster"
@@ -353,6 +354,12 @@ func handleSidecarCertSetup(ctx context.Context, cfg *config.CocoConfig, trustee
 		return fmt.Errorf("failed to save client certificate: %w", err)
 	}
 
+	// Export client cert to PKCS#12 for mTLS client use
+	clientP12Path := filepath.Join(certDir, "client.p12")
+	if err := clientCert.SaveToPKCS12(clientP12Path, "coco mTLS client", ""); err != nil {
+		return fmt.Errorf("failed to create client.p12: %w", err)
+	}
+
 	fmt.Println("\nSidecar certificates configured successfully!")
 	if clientCAPath != "" {
 		fmt.Printf("  - Client CA uploaded to: kbs:///%s\n", clientCAPath)
@@ -360,6 +367,7 @@ func handleSidecarCertSetup(ctx context.Context, cfg *config.CocoConfig, trustee
 	fmt.Printf("  - Client CA saved to: %s/ca-cert.pem (for signing server certs)\n", certDir)
 	fmt.Printf("  - Client certificate saved to: %s/client-cert.pem\n", certDir)
 	fmt.Printf("  - Client key saved to: %s/client-key.pem\n", certDir)
+	fmt.Printf("  - Client PKCS#12 bundle saved to: %s/client.p12 (coco mTLS client)\n", certDir)
 
 	return nil
 }
