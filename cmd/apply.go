@@ -789,7 +789,7 @@ func handleSidecarServerCert(ctx context.Context, cfg *config.CocoConfig, appNam
 }
 
 // saveSidecarCertsToYAML saves sidecar server certificate and key to a YAML file
-// as a Kubernetes TLS Secret. The file is saved alongside the manifest with the
+// as a Kubernetes Opaque Secret. The file is saved alongside the manifest with the
 // naming convention {basename}-sidecar-certs.yaml, matching the existing pattern
 // used by other generated files (e.g., {basename}-sealed-secrets.yaml).
 func saveSidecarCertsToYAML(manifestPath string, serverCert *certs.CertificateSet, appName, namespace string) (string, error) {
@@ -801,7 +801,7 @@ func saveSidecarCertsToYAML(manifestPath string, serverCert *certs.CertificateSe
 	baseName := strings.TrimSuffix(manifestPath, ext)
 	certFilePath := baseName + "-sidecar-certs.yaml"
 
-	// Build Kubernetes Secret structure (kubernetes.io/tls)
+	// Build Kubernetes Secret structure (Opaque; keys are server-cert/server-key)
 	secretData := map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Secret",
@@ -809,10 +809,10 @@ func saveSidecarCertsToYAML(manifestPath string, serverCert *certs.CertificateSe
 			"name":      "sidecar-tls-" + appName,
 			"namespace": namespace,
 		},
-		"type": "kubernetes.io/tls",
+		"type": "Opaque",
 		"data": map[string]string{
-			"tls.crt": base64.StdEncoding.EncodeToString(serverCert.CertPEM),
-			"tls.key": base64.StdEncoding.EncodeToString(serverCert.KeyPEM),
+			"server-cert": base64.StdEncoding.EncodeToString(serverCert.CertPEM),
+			"server-key":  base64.StdEncoding.EncodeToString(serverCert.KeyPEM),
 		},
 	}
 
