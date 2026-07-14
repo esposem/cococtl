@@ -206,6 +206,71 @@ func TestInitCommand_RuntimeClassWithTrusteeURL(t *testing.T) {
 	}
 }
 
+// TestInitCommand_WithTrusteeCACertFlag tests the init command with --trustee-ca-cert flag
+func TestInitCommand_WithTrusteeCACertFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.toml")
+
+	cmd := initCmd
+	if err := cmd.Flags().Set("output", configPath); err != nil {
+		t.Fatalf("Failed to set output flag: %v", err)
+	}
+	if err := cmd.Flags().Set("trustee-url", "https://trustee.example.com:8080"); err != nil {
+		t.Fatalf("Failed to set trustee-url flag: %v", err)
+	}
+	if err := cmd.Flags().Set("runtime-class", "kata-cc"); err != nil {
+		t.Fatalf("Failed to set runtime-class flag: %v", err)
+	}
+	if err := cmd.Flags().Set("trustee-ca-cert", "/path/to/ca.crt"); err != nil {
+		t.Fatalf("Failed to set trustee-ca-cert flag: %v", err)
+	}
+
+	if err := runInit(cmd, []string{}); err != nil {
+		t.Fatalf("runInit failed: %v", err)
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	if cfg.TrusteeCACert != "/path/to/ca.crt" {
+		t.Errorf("TrusteeCACert = %q, want %q", cfg.TrusteeCACert, "/path/to/ca.crt")
+	}
+}
+
+// TestInitCommand_WithoutTrusteeCACertFlag tests that trustee_ca_cert remains empty when the flag is unset/cleared
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.toml")
+
+	cmd := initCmd
+	if err := cmd.Flags().Set("output", configPath); err != nil {
+		t.Fatalf("Failed to set output flag: %v", err)
+	}
+	if err := cmd.Flags().Set("trustee-url", "https://trustee.example.com:8080"); err != nil {
+		t.Fatalf("Failed to set trustee-url flag: %v", err)
+	}
+	if err := cmd.Flags().Set("runtime-class", "kata-cc"); err != nil {
+		t.Fatalf("Failed to set runtime-class flag: %v", err)
+	}
+	if err := cmd.Flags().Set("trustee-ca-cert", ""); err != nil {
+		t.Fatalf("Failed to set trustee-ca-cert flag: %v", err)
+	}
+
+	if err := runInit(cmd, []string{}); err != nil {
+		t.Fatalf("runInit failed: %v", err)
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	if cfg.TrusteeCACert != "" {
+		t.Errorf("TrusteeCACert = %q, want empty string", cfg.TrusteeCACert)
+	}
+}
+
 // TestInitCommand_CertDirWithEnableSidecar tests that --cert-dir is correctly applied
 // together with --enable-sidecar, and that config has the expected certDir after validation.
 // For each (enable-sidecar, cert-dir) combination we build config using the same logic as
