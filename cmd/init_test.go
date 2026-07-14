@@ -9,7 +9,26 @@ import (
 	"testing"
 
 	"github.com/confidential-devhub/cococtl/pkg/config"
+	"github.com/spf13/cobra"
 )
+
+func newTestInitCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "init",
+		RunE: runInit,
+	}
+	cmd.Flags().StringP("output", "o", "", "Output path for config file")
+	cmd.Flags().BoolP("interactive", "i", false, "Enable interactive prompts")
+	cmd.Flags().Bool("skip-trustee-deploy", false, "Skip Trustee deployment")
+	cmd.Flags().String("trustee-namespace", "", "Namespace for Trustee deployment")
+	cmd.Flags().String("trustee-url", "", "Trustee server URL")
+	cmd.Flags().String("runtime-class", "", "RuntimeClass to use")
+	cmd.Flags().Bool("enable-sidecar", false, "Enable sidecar")
+	cmd.Flags().Bool("upload-client-ca", false, "Upload client CA to Trustee KBS")
+	cmd.Flags().String("cert-dir", "", "Directory for sidecar certificates")
+	cmd.Flags().String("trustee-ca-cert", "", "Path to Trustee CA certificate file")
+	return cmd
+}
 
 func withStdin(t *testing.T, input string, fn func()) {
 	t.Helper()
@@ -88,7 +107,7 @@ func TestInitCommand_WithRuntimeClassFlag(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "test-config.toml")
 
 	// Create and execute init command with flags
-	cmd := initCmd
+	cmd := newTestInitCmd()
 	if err := cmd.Flags().Set("output", configPath); err != nil {
 		t.Fatalf("Failed to set output flag: %v", err)
 	}
@@ -128,7 +147,7 @@ func TestInitCommand_WithoutRuntimeClassFlag(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "test-config.toml")
 
 	// Create and execute init command without runtime-class flag
-	cmd := initCmd
+	cmd := newTestInitCmd()
 	if err := cmd.Flags().Set("output", configPath); err != nil {
 		t.Fatalf("Failed to set output flag: %v", err)
 	}
@@ -175,7 +194,7 @@ func TestInitCommand_RuntimeClassWithTrusteeURL(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "test-config.toml")
 
 	// Create and execute init command with both flags
-	cmd := initCmd
+	cmd := newTestInitCmd()
 	if err := cmd.Flags().Set("output", configPath); err != nil {
 		t.Fatalf("Failed to set output flag: %v", err)
 	}
@@ -211,7 +230,7 @@ func TestInitCommand_WithTrusteeCACertFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.toml")
 
-	cmd := initCmd
+	cmd := newTestInitCmd()
 	if err := cmd.Flags().Set("output", configPath); err != nil {
 		t.Fatalf("Failed to set output flag: %v", err)
 	}
@@ -240,10 +259,11 @@ func TestInitCommand_WithTrusteeCACertFlag(t *testing.T) {
 }
 
 // TestInitCommand_WithoutTrusteeCACertFlag tests that trustee_ca_cert remains empty when the flag is unset/cleared
+func TestInitCommand_WithoutTrusteeCACertFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.toml")
 
-	cmd := initCmd
+	cmd := newTestInitCmd()
 	if err := cmd.Flags().Set("output", configPath); err != nil {
 		t.Fatalf("Failed to set output flag: %v", err)
 	}
